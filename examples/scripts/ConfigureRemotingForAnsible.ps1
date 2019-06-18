@@ -452,19 +452,19 @@ Set-Item WSMan:\localhost\Shell\MaxMemoryPerShellMB 4096
 Set-Item WSMan:\localhost\Plugin\Microsoft.PowerShell\Quotas\MaxMemoryPerShellMB 4096
 
 #Add my domain as a trusted host to the template
-Set-Item WSMan:\localhost\Client\TrustedHosts -value * -Force -Verbose
+Set-Item -Force WSMan:\localhost\Client\TrustedHosts -value * -Verbose
 
 #AllowUnencrypted config setting in both the Client
-set-item -force WSMan:\localhost\Client\AllowUnencrypted $true -Force -Verbose
+set-item -force WSMan:\localhost\Client\AllowUnencrypted $true -Verbose
 
 #AllowUnencrypted config setting in both the Service
-set-item -force WSMan:\localhost\Service\AllowUnencrypted $true -Force -Verbose
+set-item -force WSMan:\localhost\Service\AllowUnencrypted $true -Verbose
 
 #enable Digest Authorization (default)
-set-item -force WSMan:\localhost\Client\Auth\Digest $true
+set-item -force WSMan:\localhost\Client\Auth\Digest $true -Verbose
 
 #enable Basic Authorization when Kerberos isn't available, but it passes items in clear text
-set-item -force WSMan:\localhost\Service\Auth\Basic $true
+set-item -force WSMan:\localhost\Service\Auth\Basic $true -Verbose
 
 Restart-Service winrm
 
