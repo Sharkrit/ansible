@@ -30,6 +30,12 @@
 #
 # Use option -SubjectName to specify the CN name of the certificate. This
 # defaults to the system's hostname and generally should not be specified.
+# 
+# Use option -OverthereJavaSupport to enable WinRM with AllowUnencrypted for any applications using Overthere Java Plugin, Such as RunDeck 
+# Ref[0]: https://github.com/xebialabs/overthere/#getting_overthere
+# Ref[1]: https://github.com/rundeck-plugins/rundeck-winrm-plugin
+#
+# Use option -ShowWSManConfig to show result of WSMan Configurations from registry
 
 # Written by Trond Hindenes <trond@hindenes.com>
 # Updated by Chris Church <cchurch@ansible.com>
@@ -40,6 +46,7 @@
 # Updated by Jordan Borean <jborean93@gmail.com>
 # Updated by Erwan Quélin <erwan.quelin@gmail.com>
 # Updated by David Norman <david@dkn.email>
+# Updated by Sharkrit Impat <sharkrit@gmail.com>
 #
 # Version 1.0 - 2014-07-06
 # Version 1.1 - 2014-11-11
@@ -51,19 +58,23 @@
 # Version 1.7 - 2017-11-23
 # Version 1.8 - 2018-02-23
 # Version 1.9 - 2018-09-21
+# Version 2.0 - 2019-06-17
 
 # Support -Verbose option
 [CmdletBinding()]
 
 Param (
     [string]$SubjectName = $env:COMPUTERNAME,
-    [int]$CertValidityDays = 1095,
+    [int]$CertValidityDays = 2555,
     [switch]$SkipNetworkProfileCheck,
     $CreateSelfSignedCert = $true,
     [switch]$ForceNewSSLCert,
     [switch]$GlobalHttpFirewallAccess,
     [switch]$DisableBasicAuth = $false,
-    [switch]$EnableCredSSP
+    [switch]$EnableCredSSP,
+    [switch]$OverthereJavaSupport,
+    [switch]$ShowWSManConfig
+
 )
 
 Function Write-Log
@@ -427,6 +438,71 @@ Else
     Write-Verbose "Firewall rule already exists to allow WinRM HTTPS."
 }
 
+
+if ($OverthereJavaSupport) { 
+
+Clear-Item WSMan:\localhost\Client\TrustedHosts
+Set-Item WSMan:\localhost\Client\TrustedHosts -Value *
+Set-Item WSMan:\localhost\Shell\MaxMemoryPerShellMB 4096
+Set-Item WSMan:\localhost\Plugin\Microsoft.PowerShell\Quotas\MaxMemoryPerShellMB 4096
+
+#Add my domain as a trusted host to the template
+Set-Item WSMan:\localhost\Client\TrustedHosts -value *
+
+#AllowUnencrypted config setting in both the Client
+set-item -force WSMan:\localhost\Client\AllowUnencrypted $true
+
+#AllowUnencrypted config setting in both the Service
+set-item -force WSMan:\localhost\Service\AllowUnencrypted $true
+
+#enable Digest Authorization (default)
+set-item -force WSMan:\localhost\Client\Auth\Digest $true
+
+#enable Basic Authorization when Kerberos isn't available, but it passes items in clear text
+set-item -force WSMan:\localhost\Service\Auth\Basic $true
+
+Restart-Service winrm
+
+}
+
+if ($ShowWSManConfig) {
+Write-Host "[$(Get-Date -format u)] ===================[ WSMan Configurations ]=====================" -ForegroundColor Magenta
+echo "WSMan:\localhost\Service"
+echo "------------------------"
+ls WSMan:\localhost\Service | select name,value
+echo ""
+echo "WSMan:\localhost\Service\Auth"
+echo "-----------------------------"
+ls WSMan:\localhost\Service\Auth | select name,value
+echo "WSMan:\localhost\Service\DefaultPorts"
+echo "-------------------------------------"
+ls WSMan:\localhost\Service\DefaultPorts | select name,value
+echo ""
+echo "WSMan:\localhost\Client"
+echo "-----------------------"
+ls WSMan:\localhost\Client | select name,value
+echo ""
+echo "WSMan:\localhost\Client\Auth"
+echo "-------------------------------"
+ls WSMan:\localhost\Client\Auth | select name,value
+echo "WSMan:\localhost\Shell"
+echo "----------------------"
+ls WSMan:\localhost\Shell
+echo ""
+echo "WSMan:\localhost\Listener"
+echo "-------------------------"
+ls WSMan:\localhost\Listener | fl *
+echo ""
+echo "Cert:\LocalMachine\My\ (A Self-Sign Certificates using for WinRM SSL)"
+echo "----------------------"
+ls –Path Cert:\LocalMachine\My\ | sort NotBefore -Descending | select -First 1 | select Thumbprint,DnsNameList,Issuer,Subject,NotAfter,NotBefore,FriendlyName
+echo "PSRemoting Access List"
+echo "----------------------"
+((Get-PSSessionConfiguration -Name Microsoft.PowerShell).Permission).split(',')
+
+Write-Host "[$(Get-Date -format u)] ===================[ WSMan Configurations ]=====================" -ForegroundColor Magenta
+}
+
 # Test a remoting connection to localhost, which should work.
 $httpResult = Invoke-Command -ComputerName "localhost" -ScriptBlock {$env:COMPUTERNAME} -ErrorVariable httpError -ErrorAction SilentlyContinue
 $httpsOptions = New-PSSessionOption -SkipCACheck -SkipCNCheck -SkipRevocationCheck
@@ -450,4 +526,5 @@ Else
     Write-Log "Unable to establish an HTTP or HTTPS remoting session."
     Throw "Unable to establish an HTTP or HTTPS remoting session."
 }
+
 Write-VerboseLog "PS Remoting has been successfully configured for Ansible."
