@@ -235,6 +235,9 @@ Trap
 }
 $ErrorActionPreference = "Stop"
 
+Write-Host "[$(Get-Date -format u)] Start configuring PS Remoting for support Ansible." -ForegroundColor Magenta
+Write-Host "[$(Get-Date -format u)] =========================================================" -ForegroundColor Magenta
+
 # Get the ID and security principal of the current user account
 $myWindowsID=[System.Security.Principal.WindowsIdentity]::GetCurrent()
 $myWindowsPrincipal=new-object System.Security.Principal.WindowsPrincipal($myWindowsID)
@@ -526,5 +529,6 @@ Else
     Write-Log "Unable to establish an HTTP or HTTPS remoting session."
     Throw "Unable to establish an HTTP or HTTPS remoting session."
 }
-
-Write-VerboseLog "PS Remoting has been successfully configured for Ansible."
+Write-Host "[$(Get-Date -format u)] PS Remoting has been successfully configured for Ansible." -ForegroundColor Magenta
+Write-Host "[$(Get-Date -format u)] =========================================================" -ForegroundColor Magenta
+Write-VerboseLog "[$(Get-Date -format u)] PS Remoting has been successfully configured for Ansible."
