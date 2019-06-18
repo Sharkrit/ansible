@@ -444,19 +444,21 @@ Else
 
 if ($OverthereJavaSupport) { 
 
+#Remove all existing TrustedHosts
 Clear-Item WSMan:\localhost\Client\TrustedHosts
-Set-Item WSMan:\localhost\Client\TrustedHosts -Value *
+
+#Override default MaxMemoryPerShellMB to 4GB
 Set-Item WSMan:\localhost\Shell\MaxMemoryPerShellMB 4096
 Set-Item WSMan:\localhost\Plugin\Microsoft.PowerShell\Quotas\MaxMemoryPerShellMB 4096
 
 #Add my domain as a trusted host to the template
-Set-Item WSMan:\localhost\Client\TrustedHosts -value *
+Set-Item WSMan:\localhost\Client\TrustedHosts -value * -Force -Verbose
 
 #AllowUnencrypted config setting in both the Client
-set-item -force WSMan:\localhost\Client\AllowUnencrypted $true
+set-item -force WSMan:\localhost\Client\AllowUnencrypted $true -Force -Verbose
 
 #AllowUnencrypted config setting in both the Service
-set-item -force WSMan:\localhost\Service\AllowUnencrypted $true
+set-item -force WSMan:\localhost\Service\AllowUnencrypted $true -Force -Verbose
 
 #enable Digest Authorization (default)
 set-item -force WSMan:\localhost\Client\Auth\Digest $true
@@ -465,6 +467,8 @@ set-item -force WSMan:\localhost\Client\Auth\Digest $true
 set-item -force WSMan:\localhost\Service\Auth\Basic $true
 
 Restart-Service winrm
+
+Write-Verbose "$(Get-Date -format u)] WinRM already reconfigured for support RunDeck Overthere Java Plugin"
 
 }
 
